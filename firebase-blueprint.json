@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "Information about a registered user in Previne+",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique Firebase Authentication UID"
+        },
+        "nickname": {
+          "type": "string",
+          "description": "Safe pseudonym chose by the user to avoid moral stigma"
+        },
+        "email": {
+          "type": "string",
+          "description": "User account email address"
+        },
+        "isAnonymous": {
+          "type": "boolean",
+          "description": "Indicates if the user logged in anonymously"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of profile creation"
+        }
+      },
+      "required": ["uid", "nickname", "email", "isAnonymous", "createdAt"]
+    },
+    "comment": {
+      "title": "Comment",
+      "description": "Security mural board positive message or query",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique comment identifier"
+        },
+        "nickname": {
+          "type": "string",
+          "description": "Author name or pseudonym"
+        },
+        "text": {
+          "type": "string",
+          "description": "Educational message detail"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Metadata category of the comment"
+        },
+        "likes": {
+          "type": "integer",
+          "description": "Number of other members supporting and liking this message"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time when comment was posted"
+        },
+        "isAnonymous": {
+          "type": "boolean",
+          "description": "Whether commenter opted to stay anonymous"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of commenter"
+        }
+      },
+      "required": ["id", "nickname", "text", "tag", "likes", "createdAt", "isAnonymous", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "A collection containing user profiles and metadata mapped by auth UID"
+    },
+    "/comments/{commentId}": {
+      "schema": "comment",
+      "description": "Solidarity board messages and queries shared anonymously by members"
+    }
+  }
+}

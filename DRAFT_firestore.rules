@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // High performance globally accessible helper functions
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function isSignedIn() { 
+      return request.auth != null; 
+    }
+
+    function incoming() { 
+      return request.resource.data; 
+    }
+
+    function existing() { 
+      return resource.data; 
+    }
+
+    // Validation patterns
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'nickname', 'email', 'isAnonymous', 'createdAt'])
+        && data.keys().size() == 5
+        && data.uid is string && data.uid.size() <= 128
+        && data.nickname is string && data.nickname.size() >= 2 && data.nickname.size() <= 128
+        && data.email is string && data.email.size() <= 128
+        && data.isAnonymous is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['id', 'nickname', 'text', 'tag', 'likes', 'createdAt', 'isAnonymous', 'userId'])
+        && data.keys().size() == 8
+        && data.id is string && data.id.size() <= 128
+        && data.nickname is string && data.nickname.size() <= 128
+        && data.text is string && data.text.size() >= 10 && data.text.size() <= 500
+        && data.tag is string && data.tag.size() <= 64
+        && data.likes is int && data.likes >= 0
+        && data.createdAt is timestamp
+        && data.isAnonymous is bool
+        && data.userId is string && data.userId.size() <= 128;
+    }
+
+    // Rules for User document
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && (
+        // Ensure immutability of certain fields
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().isAnonymous == existing().isAnonymous &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['nickname'])
+      );
+      // Delete is forbidden for durability
+      allow delete: if false;
+    }
+
+    // Rules for Comments document
+    match /comments/{commentId} {
+      // Any signed in user can read comments (to populate feed)
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      // Any signed in user can create comments as long as they are the author
+      allow create: if isSignedIn() 
+        && isValidId(commentId)
+        && commentId == incoming().id
+        && request.auth.uid == incoming().userId
+        && isValidComment(incoming())
+        && incoming().createdAt == request.time
+        && incoming().likes == 0;
+
+      // Allow updates to likes or the entire comment under strict constraints
+      allow update: if isSignedIn() && isValidComment(incoming()) && (
+        // Support/Like Action: must only allow changes to 'likes' count
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes']) 
+         && (incoming().likes == existing().likes + 1 || incoming().likes == existing().likes - 1))
+        ||
+        // Self Edit Action: only actual authors can edit text/tag
+        (request.auth.uid == existing().userId 
+         && incoming().userId == existing().userId
+         && incoming().createdAt == existing().createdAt
+         && incoming().id == existing().id
+         && incoming().diff(existing()).affectedKeys().hasOnly(['text', 'tag', 'isAnonymous', 'nickname']))
+      );
+
+      // Disable comments deletion
+      allow delete: if false;
+    }
+  }
+}

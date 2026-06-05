@@ -1,0 +1,8 @@
+{
+  "name": "Previne+",
+  "description": "Uma plataforma inteligente e discreta dedicada ao apoio, educação e orientação sobre Infecções Sexualmente Transmissíveis (ISTs), proporcionando um ambiente seguro para tirar dúvidas e buscar auxílio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
